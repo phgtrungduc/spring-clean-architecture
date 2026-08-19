@@ -1,0 +1,65 @@
+### Clean Architecture API Test File
+### Sử dụng trong IntelliJ IDEA hoặc VS Code (với REST Client extension)
+
+### 1. Create User - Success
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "fullName": "John Doe"
+}
+
+### 2. Create User - Invalid Email
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "fullName": "Jane Doe"
+}
+
+### 3. Create User - Short Name (Business Rule Violation)
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "short@example.com",
+  "fullName": "A"
+}
+
+### 4. Create User - Duplicate Email (Conflict)
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "fullName": "Another John"
+}
+
+### 5. Create Multiple Users
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "fullName": "Alice Smith"
+}
+
+###
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "bob@example.com",
+  "fullName": "Bob Johnson"
+}
+
+###
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "charlie@example.com",
+  "fullName": "Charlie Brown"
+}
