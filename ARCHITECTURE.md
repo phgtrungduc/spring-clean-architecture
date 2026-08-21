@@ -374,7 +374,7 @@ public class User {
 package com.cleanarch.domain.valueobject;
 
 public class Email {
-    private static final Pattern EMAIL_PATTERN = ...;
+    private static final Pattern EMAIL_PATTERN = "...";
     private final String value;
 
     public Email(String value) {
