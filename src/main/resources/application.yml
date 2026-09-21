@@ -37,6 +37,30 @@ server:
   servlet:
     context-path: /
 
+# Kafka Configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+    
+    # Producer Configuration
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    
+    # Consumer Configuration
+    consumer:
+      group-id: clean-arch-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      enable-auto-commit: false
+      max-poll-records: 10
+      properties:
+        spring.json.trusted.packages: "*"
+
 # Logging
 logging:
   level:
@@ -44,3 +68,4 @@ logging:
     com.cleanarch: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.kafka: INFO

@@ -127,6 +127,205 @@ Cân nhắc tách khi:
 
 ---
 
+## 🔌 Tại sao gọi là "Port"?
+
+### Nguồn gốc: Hexagonal Architecture (Ports & Adapters)
+
+**Port** là thuật ngữ từ **Hexagonal Architecture** của Alistair Cockburn (2005), còn gọi là **Ports & Adapters Pattern**.
+
+#### Ví dụ thực tế (Hardware)
+
+```
+┌──────────────┐        ┌──────────────┐
+│   Computer   │        │  USB Device  │
+│              │        │              │
+│  ┌────────┐  │        │              │
+│  │  CPU   │  │        │              │
+│  │ (Core) │  │        │              │
+│  └────────┘  │        │              │
+│      ║       │        │              │
+│  ┌────────┐  │  USB   │              │
+│  │  PORT  │◄─┼────────┼─►  ADAPTER  │
+│  └────────┘  │  Cable │              │
+│              │        │              │
+└──────────────┘        └──────────────┘
+```
+
+- **PORT** (cổng): Interface trên computer (USB port, HDMI port)
+- **ADAPTER**: Device kết nối vào port (USB cable, HDMI cable)
+- **Core**: CPU, không biết gì về external devices
+
+#### Áp dụng vào Software
+
+```
+┌────────────────────────┐        ┌──────────────────┐
+│   Application Core     │        │  External System │
+│                        │        │                  │
+│  ┌──────────────────┐  │        │                  │
+│  │   Use Case       │  │        │                  │
+│  │  (Business Logic)│  │        │                  │
+│  └──────────────────┘  │        │                  │
+│          ║             │        │                  │
+│  ┌──────────────────┐  │        │                  │
+│  │      PORT        │◄─┼────────┼─►    ADAPTER    │
+│  │   (Interface)    │  │        │ (Implementation) │
+│  └──────────────────┘  │        │                  │
+│                        │        │                  │
+└────────────────────────┘        └──────────────────┘
+```
+
+---
+
+### Port = Interface (Cổng giao tiếp)
+
+**Port** là **interface** định nghĩa contract giữa:
+- Application core (bên trong)
+- External systems (bên ngoài)
+
+#### Đặc điểm của Port:
+
+1. **Là interface** (không phải implementation)
+2. **Định nghĩa bởi core** (không phải external)
+3. **Stable** (ít thay đổi)
+4. **Abstract** (không biết implementation)
+
+---
+
+### 2 loại Port
+
+#### **Input Port (Primary/Driving Port)**
+- **Ai gọi:** External actors (User, Controller) gọi vào core
+- **Mục đích:** Cho phép bên ngoài **SỬ DỤNG** core
+- **Ví dụ:** Use case interfaces, Commands
+
+```
+Controller ──(calls)──> Input Port ──> Use Case
+```
+
+**Trong project này:**
+```java
+// application/port/in/CreateUserCommand.java
+public class CreateUserCommand {  // Input Port
+    private final String email;
+    private final String fullName;
+}
+
+// Controller (external) sends command INTO application
+```
+
+#### **Output Port (Secondary/Driven Port)**
+- **Ai gọi:** Core gọi ra external systems
+- **Mục đích:** Core **CẦN** services từ bên ngoài
+- **Ví dụ:** Repository interfaces, External service interfaces
+
+```
+Use Case ──(calls)──> Output Port ──(implemented by)──> Adapter ──> Database
+```
+
+**Trong project này:**
+```java
+// application/port/out/UserRepositoryPort.java
+public interface UserRepositoryPort {  // Output Port
+    User save(User user);
+    Optional<User> findByEmail(Email email);
+}
+
+// Use Case calls this port
+// Adapter (infrastructure) implements this port
+```
+
+---
+
+### Port vs Adapter
+
+| | Port | Adapter |
+|---|------|---------|
+| **Là gì?** | Interface | Implementation |
+| **Ở đâu?** | Application layer | Infrastructure layer |
+| **Ai định nghĩa?** | Application (core) | Infrastructure (external) |
+| **Phụ thuộc?** | Không phụ thuộc gì | Phụ thuộc port |
+| **Ví dụ** | `UserRepositoryPort` | `UserRepositoryAdapter` |
+
+---
+
+### Tại sao cần Port?
+
+#### ❌ Không có Port (Tight coupling)
+```java
+public class CreateUserUseCase {
+    private UserJpaRepository jpaRepo;  // ❌ Phụ thuộc JPA
+    
+    public void execute() {
+        UserJpaEntity entity = ...;     // ❌ Phụ thuộc JPA entity
+        jpaRepo.save(entity);
+    }
+}
+```
+
+**Vấn đề:**
+- Use case phụ thuộc JPA
+- Không thể test mà không có database
+- Không thể đổi database dễ dàng
+
+#### ✅ Có Port (Loose coupling)
+```java
+public class CreateUserUseCase {
+    private UserRepositoryPort port;    // ✅ Phụ thuộc interface
+    
+    public void execute() {
+        User user = ...;                // ✅ Domain object
+        port.save(user);
+    }
+}
+```
+
+**Lợi ích:**
+- Use case chỉ phụ thuộc interface
+- Dễ test (mock port)
+- Dễ đổi implementation (Oracle → Postgres)
+
+---
+
+### Trong project này
+
+#### Output Port (Repository)
+```
+Application Layer:
+  application/port/out/UserRepositoryPort.java  ← Port (interface)
+        ▲
+        │ implements
+        │
+Infrastructure Layer:
+  infrastructure/persistence/adapter/UserRepositoryAdapter.java  ← Adapter
+```
+
+#### Input Port (Command)
+```
+Infrastructure Layer:
+  UserController  ──creates──>  CreateUserCommand  ──sends to──>  UseCase
+                                      ▲
+                                      │
+                                   Input Port
+                            (application/port/in/)
+```
+
+---
+
+### Tóm tắt
+
+**"Port" = Cổng giao tiếp (Interface)**
+
+- Giống như **USB port** trên máy tính
+- Định nghĩa **contract** giữa core và external
+- Cho phép **plug & play** different adapters
+- **Core không biết** implementation cụ thể là gì
+
+**Port trong Hexagonal Architecture = Interface trong Clean Architecture**
+
+Cả hai đều nhằm **Dependency Inversion**: Core định nghĩa interface, external implement.
+
+---
+
 ## 📁 Cấu trúc Project
 
 ```
@@ -186,9 +385,27 @@ src/main/java/com/cleanarch/
     │       └── UserJpaRepository.java  - Spring Data JPA
     │                                   - Database operations
     │
+    ├── messaging/                      Kafka Adapters (Event-Driven)
+    │   ├── publisher/
+    │   │   └── KafkaPublisher.java     - Generic Kafka publisher
+    │   │                               - Async message sending
+    │   │
+    │   ├── consumer/
+    │   │   └── KafkaConsumer.java      - Generic Kafka consumer
+    │   │                               - Event listeners
+    │   │
+    │   ├── event/
+    │   │   ├── UserCreatedEvent.java   - User created event DTO
+    │   │   └── UserUpdatedEvent.java   - User updated event DTO
+    │   │
+    │   └── service/
+    │       └── UserEventPublisher.java - User event publisher service
+    │                                   - Business event publishing
+    │
     └── config/                         Configuration
         ├── CleanArchitectureApplication.java - Spring Boot main
         ├── UseCaseConfiguration.java         - Bean wiring
+        ├── KafkaConfiguration.java           - Kafka setup
         └── GlobalExceptionHandler.java       - Exception handling
 ```
 
@@ -779,6 +996,198 @@ curl -X POST http://localhost:8080/api/users \
 - [Hexagonal Architecture - Alistair Cockburn](https://alistair.cockburn.us/hexagonal-architecture/)
 - [Spring Boot Documentation](https://spring.io/projects/spring-boot)
 - [Domain-Driven Design - Eric Evans](https://domainlanguage.com/ddd/)
+- [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
+- [Spring Kafka Documentation](https://spring.io/projects/spring-kafka)
+
+---
+
+## 📡 Event-Driven Architecture với Kafka
+
+### Tại sao dùng Kafka?
+
+**Kafka** cho phép xây dựng **Event-Driven Architecture**, giúp:
+- ✅ **Decoupling**: Services không phụ thuộc trực tiếp vào nhau
+- ✅ **Scalability**: Xử lý hàng triệu events/giây
+- ✅ **Reliability**: Message không bị mất nhờ persistence
+- ✅ **Asynchronous**: Xử lý bất đồng bộ, tăng performance
+- ✅ **Event Sourcing**: Lưu trữ toàn bộ history của events
+
+### Kafka trong Clean Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│            Infrastructure Layer                  │
+│                                                  │
+│  ┌──────────────┐         ┌─────────────────┐  │
+│  │  Controller  │         │  KafkaConsumer  │  │
+│  └──────┬───────┘         └────────┬────────┘  │
+│         │                          │            │
+│         │ trigger                  │ listen     │
+│         ▼                          ▼            │
+│  ┌──────────────────────────────────────────┐  │
+│  │       UserEventPublisher Service         │  │
+│  │  (publishes events to Kafka)             │  │
+│  └──────────────┬───────────────────────────┘  │
+│                 │                               │
+│                 │ publish                       │
+│                 ▼                               │
+│  ┌──────────────────────────────────────────┐  │
+│  │         KafkaPublisher                   │  │
+│  │  (generic Kafka adapter)                 │  │
+│  └──────────────┬───────────────────────────┘  │
+│                 │                               │
+└─────────────────┼───────────────────────────────┘
+                  │
+                  ▼
+        ┌─────────────────┐
+        │  Kafka Cluster  │
+        │  (External)     │
+        └─────────────────┘
+```
+
+### Event Flow Example
+
+```
+1️⃣  User creates account (POST /api/users)
+        │
+        ▼
+2️⃣  UserController receives request
+        │
+        ▼
+3️⃣  CreateUserUseCase executes
+        │
+        ▼
+4️⃣  User saved to database
+        │
+        ▼
+5️⃣  UserEventPublisher.publishUserCreated()
+        │
+        ▼
+6️⃣  Event sent to Kafka topics:
+        - user-created
+        - user-events
+        │
+        ▼
+7️⃣  Other services consume events:
+        - Email Service → Send welcome email
+        - Analytics Service → Track new user
+        - Notification Service → Push notification
+        - Audit Service → Log user creation
+```
+
+### Kafka Components
+
+#### 1. Configuration (`KafkaConfiguration.java`)
+- Producer factory
+- Consumer factory
+- Listener container factory
+- Serialization/deserialization setup
+
+#### 2. Publisher (`KafkaPublisher.java`)
+- Generic publisher for any message type
+- Async and sync publishing
+- Error handling and logging
+
+#### 3. Event Publisher (`UserEventPublisher.java`)
+- Business-specific event publisher
+- Publishes UserCreatedEvent, UserUpdatedEvent
+- Uses KafkaPublisher internally
+
+#### 4. Consumer (`KafkaConsumer.java`)
+- Listens to Kafka topics
+- Manual acknowledgment
+- Error handling
+- Routes to business logic
+
+#### 5. Event Models
+- `UserCreatedEvent.java` - User creation event
+- `UserUpdatedEvent.java` - User update event
+- JSON serializable POJOs
+
+### Topics Strategy
+
+| Topic | Purpose | Producers | Consumers |
+|-------|---------|-----------|-----------|
+| `user-events` | All user events | UserEventPublisher | Multiple services |
+| `user-created` | User creation | UserEventPublisher | Email, Analytics |
+| `user-updated` | User updates | UserEventPublisher | Cache, Sync |
+| `order-events` | Order events | OrderEventPublisher | Inventory, Shipping |
+
+### Setup Kafka
+
+#### Quick Start với Docker:
+
+```bash
+# Start Kafka with Zookeeper
+docker-compose -f docker-compose-kafka.yml up -d
+
+# Check status
+docker ps
+
+# Access Kafka UI
+http://localhost:8090
+```
+
+#### Thêm chi tiết: Xem [KAFKA-SETUP.md](KAFKA-SETUP.md)
+
+### Integration Example
+
+#### Publishing Events từ Use Case:
+
+```java
+public class CreateUserUseCase {
+    private final UserRepositoryPort userRepository;
+    private final UserEventPublisher eventPublisher;
+    
+    public CreateUserResult execute(CreateUserCommand command) {
+        // Create and save user
+        User user = new User(email, fullName);
+        User saved = userRepository.save(user);
+        
+        // Publish event
+        eventPublisher.publishUserCreated(
+            saved.getId().getValue(),
+            saved.getEmail().getValue(),
+            saved.getFullName(),
+            saved.getCreatedAt(),
+            saved.isActive()
+        );
+        
+        return new CreateUserResult(saved);
+    }
+}
+```
+
+#### Consuming Events:
+
+```java
+@KafkaListener(topics = "user-created", groupId = "email-service")
+public void onUserCreated(ConsumerRecord<String, UserCreatedEvent> record) {
+    UserCreatedEvent event = record.value();
+    
+    // Send welcome email
+    emailService.sendWelcomeEmail(event.getEmail(), event.getFullName());
+    
+    // Acknowledge
+    ack.acknowledge();
+}
+```
+
+### Benefits
+
+1. **Loose Coupling**: Services không cần biết về nhau
+2. **Scalability**: Thêm consumers dễ dàng
+3. **Reliability**: Kafka persistence đảm bảo không mất message
+4. **Audit Trail**: Events = history log
+5. **Multiple Consumers**: Một event, nhiều xử lý
+
+### Best Practices
+
+1. ✅ **Idempotent Consumers**: Xử lý duplicate messages
+2. ✅ **Schema Evolution**: Version events khi thay đổi
+3. ✅ **Error Handling**: Dead letter queue cho failed messages
+4. ✅ **Monitoring**: Track lag, throughput, errors
+5. ✅ **Testing**: Test với embedded Kafka
 
 ---
 
