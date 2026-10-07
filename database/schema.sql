@@ -1,30 +1,25 @@
--- Oracle Database Schema for Clean Architecture Demo
+-- PostgreSQL Schema for Clean Architecture Demo
 
 -- Drop table if exists (for development only)
--- DROP TABLE USERS CASCADE CONSTRAINTS;
+-- DROP TABLE IF EXISTS users;
 
--- Create USERS table
-CREATE TABLE USERS (
-    ID VARCHAR2(50) PRIMARY KEY,
-    EMAIL VARCHAR2(255) NOT NULL UNIQUE,
-    FULL_NAME VARCHAR2(255) NOT NULL,
-    CREATED_AT TIMESTAMP NOT NULL,
-    ACTIVE NUMBER(1) NOT NULL CHECK (ACTIVE IN (0, 1))
+CREATE TABLE users (
+    id VARCHAR(50) PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    full_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    active BOOLEAN NOT NULL
 );
 
--- Create index on email for faster lookup
-CREATE INDEX idx_users_email ON USERS(EMAIL);
+CREATE INDEX idx_users_email ON users (email);
 
--- Comments for documentation
-COMMENT ON TABLE USERS IS 'Users table for Clean Architecture demo';
-COMMENT ON COLUMN USERS.ID IS 'Unique user identifier (UUID)';
-COMMENT ON COLUMN USERS.EMAIL IS 'User email address (unique)';
-COMMENT ON COLUMN USERS.FULL_NAME IS 'User full name';
-COMMENT ON COLUMN USERS.CREATED_AT IS 'User creation timestamp';
-COMMENT ON COLUMN USERS.ACTIVE IS 'User active status (1=active, 0=inactive)';
+COMMENT ON TABLE users IS 'Users table for Clean Architecture demo';
+COMMENT ON COLUMN users.id IS 'Unique user identifier (UUID)';
+COMMENT ON COLUMN users.email IS 'User email address (unique)';
+COMMENT ON COLUMN users.full_name IS 'User full name';
+COMMENT ON COLUMN users.created_at IS 'User creation timestamp';
+COMMENT ON COLUMN users.active IS 'User active status';
 
 -- Sample data (optional, for testing)
--- INSERT INTO USERS (ID, EMAIL, FULL_NAME, CREATED_AT, ACTIVE) 
--- VALUES ('test-uuid-1', 'test@example.com', 'Test User', SYSTIMESTAMP, 1);
-
-COMMIT;
+-- INSERT INTO users (id, email, full_name, created_at, active)
+-- VALUES ('test-uuid-1', 'test@example.com', 'Test User', NOW(), TRUE);

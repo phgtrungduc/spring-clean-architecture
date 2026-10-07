@@ -8,6 +8,7 @@ import com.cleanarch.infrastructure.persistence.entity.UserJpaEntity;
 import com.cleanarch.infrastructure.persistence.repository.UserJpaRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -51,6 +52,11 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     @Override
     public boolean existsByEmail(Email email) {
         return jpaRepository.existsByEmail(email.getValue());
+    }
+
+    @Override
+    public List<User> getAll() {
+        return jpaRepository.findAll().stream().map(this::toDomainUser).toList();
     }
 
     // Mapper: Domain -> JPA Entity

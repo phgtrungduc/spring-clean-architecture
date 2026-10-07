@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clean-arch-config
+  labels:
+    app: clean-arch-app
+data:
+  # host.docker.internal = máy host (Postgres/Kafka đang chạy sẵn)
+  SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/order-management
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:9092
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: clean-arch-secret
+  labels:
+    app: clean-arch-app
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_USERNAME: postgres
+  SPRING_DATASOURCE_PASSWORD: postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clean-arch-app
+  labels:
+    app: clean-arch-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: clean-arch-app
+  template:
+    metadata:
+      labels:
+        app: clean-arch-app
+    spec:
+      containers:
+        - name: clean-arch-app
+          image: clean-arch-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: clean-arch-config
+            - secretRef:
+                name: clean-arch-secret
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clean-arch-app
+  labels:
+    app: clean-arch-app
+spec:
+  type: ClusterIP
+  selector:
+    app: clean-arch-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
